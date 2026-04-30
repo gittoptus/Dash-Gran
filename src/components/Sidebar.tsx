@@ -1,5 +1,5 @@
 import React from 'react';
-import { PhoneOff, Bot, ArrowRightLeft, Settings, LifeBuoy, TrendingUp, HeartHandshake, UserCheck, Hash } from 'lucide-react';
+import { Bot, ArrowRightLeft, Settings, LifeBuoy, TrendingUp, HeartHandshake, UserCheck, Hash, LayoutDashboard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function Sidebar({ activePath = 'fcr', onNavigate }: { activePath?: string, onNavigate?: (path: string) => void }) {
@@ -10,7 +10,7 @@ export default function Sidebar({ activePath = 'fcr', onNavigate }: { activePath
     { id: 'bot', label: 'Encerramento Bot', icon: Bot },
     { id: 'transferencias', label: 'Transferências', icon: ArrowRightLeft },
     { id: 'retencao', label: 'Engajamento', icon: UserCheck },
-    { id: 'abandono', label: 'Abandono', icon: PhoneOff },
+    { id: 'custom', label: 'Dashboard Customizado', icon: LayoutDashboard },
   ];
 
   const bottomItems = [

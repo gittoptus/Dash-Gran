@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
+import { useDashboard } from '@/contexts/DashboardContext';
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { ExpandableCard } from '@/components/ui/expandable-card';
 import { 
@@ -68,16 +70,41 @@ const colors = {
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
+    let variationInfo = null;
+    const atualEntry = payload.find((p: any) => p.name?.toLowerCase() === 'atual' || p.dataKey === 'atual' || p.dataKey === 'Atual');
+    const anteriorEntry = payload.find((p: any) => p.name?.toLowerCase() === 'anterior' || p.dataKey === 'anterior' || p.dataKey === 'Anterior');
+
+    if (atualEntry && anteriorEntry && anteriorEntry.value > 0) {
+      const perc = ((atualEntry.value - anteriorEntry.value) / anteriorEntry.value) * 100;
+      const isPositive = perc > 0;
+      variationInfo = (
+        <div className="mt-2 pt-2 border-t border-border flex items-center justify-between gap-4">
+          <span className="text-[11px] text-muted uppercase">Var. Período Ant.:</span>
+          <span className={`text-[12px] font-bold ${isPositive ? 'text-success' : 'text-danger'}`}>
+            {isPositive ? '+' : ''}{perc.toFixed(1)}%
+          </span>
+        </div>
+      );
+    }
+
     return (
-      <div className="bg-card border text-[13px] border-border p-3 rounded-lg shadow-lg">
-        <p className="font-semibold text-foreground mb-1">{label}</p>
-        {payload.map((entry: any, index: number) => (
-          <div key={index} className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color || colors.primary }} />
-            <span className="text-muted font-medium">{entry.name}:</span>
-            <span className="text-foreground font-bold">{entry.value.toLocaleString('pt-BR')}</span>
-          </div>
-        ))}
+      <div className="bg-card border text-[13px] border-border p-3 rounded-lg shadow-lg min-w-[170px]">
+        <p className="font-semibold text-foreground mb-2">{label}</p>
+        <div className="flex flex-col gap-1.5">
+          {payload.map((entry: any, index: number) => (
+            <div key={index} className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color || colors.primary }} />
+                <span className="text-muted font-medium">{entry.name}:</span>
+              </div>
+              <span className="text-foreground font-bold">
+                {entry.value.toLocaleString('pt-BR')}
+                {entry.name === 'Volume' && entry.value <= 100 ? '%' : ''}
+              </span>
+            </div>
+          ))}
+        </div>
+        {variationInfo}
       </div>
     );
   }
@@ -85,6 +112,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function DashboardVolume() {
+  const { filterScale } = useDashboard();
   const [expanded, setExpanded] = useState<string | null>(null);
 
   return (
@@ -112,15 +140,15 @@ export default function DashboardVolume() {
         </div>
       </div>
 
-      {/* Top Layer: Exec Card & Evolution */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      {/* Top Layer: Exec Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
-        {/* Executive Card */}
-        <Card className="lg:col-span-1 border-border bg-card flex flex-col p-[20px]">
+        {/* Executive Card 1 */}
+        <Card className="border-border bg-card flex flex-col p-[20px]">
           <div className="text-[12px] font-semibold text-muted uppercase tracking-[0.05em] mb-4">
             Total de Atendimentos
           </div>
-          <div className="text-[48px] font-bold text-foreground mb-1 leading-none tracking-tight">105.840</div>
+          <div className="text-[48px] font-bold text-foreground mb-1 leading-none tracking-tight">{Math.round(105840 * filterScale).toLocaleString('pt-BR')}</div>
           
           <div className="text-[14px] font-semibold flex items-center gap-1 mb-5 text-warning">
             ▲ +8,5% vs anterior
@@ -129,7 +157,7 @@ export default function DashboardVolume() {
           <div className="mt-auto pt-4 border-t border-border flex justify-between text-[13px]">
              <div>
               <div className="text-[11px] text-muted mb-2">Média Diária</div>
-              <div className="font-semibold text-foreground">3.528</div>
+              <div className="font-semibold text-foreground">{Math.round(3528 * filterScale).toLocaleString('pt-BR')}</div>
             </div>
             <div className="text-right">
               <div className="text-[11px] text-muted mb-2">Status</div>
@@ -140,13 +168,67 @@ export default function DashboardVolume() {
           </div>
         </Card>
 
+        {/* Executive Card 2 */}
+        <Card className="border-border bg-card flex flex-col p-[20px]">
+          <div className="text-[12px] font-semibold text-muted uppercase tracking-[0.05em] mb-4">
+            % Encerrado no Bot
+          </div>
+          <div className="text-[48px] font-bold text-foreground mb-1 leading-none tracking-tight">71,3%</div>
+          
+          <div className="text-[14px] font-semibold flex items-center gap-1 mb-5 text-success">
+            ▲ +2,1% vs anterior
+          </div>
+
+          <div className="mt-auto pt-4 border-t border-border flex justify-between text-[13px]">
+             <div>
+              <div className="text-[11px] text-muted mb-2">Vol. Encerrado</div>
+              <div className="font-semibold text-foreground">{Math.round(105840 * 0.713 * filterScale).toLocaleString('pt-BR')}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-[11px] text-muted mb-2">Status</div>
+              <div className="px-2 py-0.5 bg-[rgba(22,163,74,0.15)] text-success border border-success/50 rounded text-[11px]">
+                🟢 Eficiente
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Executive Card 3 */}
+        <Card className="border-border bg-card flex flex-col p-[20px]">
+          <div className="text-[12px] font-semibold text-muted uppercase tracking-[0.05em] mb-4">
+            % Transbordo
+          </div>
+          <div className="text-[48px] font-bold text-foreground mb-1 leading-none tracking-tight">28,7%</div>
+          
+          <div className="text-[14px] font-semibold flex items-center gap-1 mb-5 text-success">
+            ▼ -2,1% vs anterior
+          </div>
+
+          <div className="mt-auto pt-4 border-t border-border flex justify-between text-[13px]">
+             <div>
+              <div className="text-[11px] text-muted mb-2">Vol. Transbordo</div>
+              <div className="font-semibold text-foreground">{Math.round(105840 * 0.287 * filterScale).toLocaleString('pt-BR')}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-[11px] text-muted mb-2">Status</div>
+              <div className="px-2 py-0.5 bg-[rgba(22,163,74,0.15)] text-success border border-success/50 rounded text-[11px]">
+                🟢 Ideal
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Evolution Chart Layer */}
+      <div className="grid grid-cols-1 gap-6">
+        
         {/* Evolution Chart */}
         <ExpandableCard
           id="volume-evolution"
           title="Evolução do Volume vs Período Anterior"
           expanded={expanded}
           setExpanded={setExpanded}
-          className="lg:col-span-3 pb-2"
+          className="pb-2"
           extraHeader={
             <div className="flex gap-3">
                 <span className="text-[10px] opacity-60 text-foreground">■ Atual</span>
@@ -156,7 +238,7 @@ export default function DashboardVolume() {
         >
           <div className="h-[240px] w-full min-h-[240px] flex-1 border-b border-border pb-2">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={evolutionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <ComposedChart data={evolutionData.map(d => Object.fromEntries(Object.entries(d).map(([k,v]) => [k, typeof v === "number" ? (v > 100 ? Math.round(v * filterScale) : Number((v * (0.85 + 0.15 * filterScale)).toFixed(1))) : v])))} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis 
                     dataKey="day" 
@@ -187,7 +269,7 @@ export default function DashboardVolume() {
                   {/* Current Period */}
                   <Bar 
                     dataKey="Atual" 
-                    radius={[2, 2, 0, 0]}
+                    radius={[2, 2, 0, 0] as any}
                     maxBarSize={40}
                   >
                      {evolutionData.map((entry, index) => (
@@ -217,12 +299,12 @@ export default function DashboardVolume() {
           <div className="flex-1 flex flex-col justify-center min-h-[220px]">
              <div className="h-[220px] w-full flex-1">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={channelData} layout="vertical" margin={{ top: 0, right: 40, left: 10, bottom: 0 }}>
+                <BarChart data={channelData.map(d => Object.fromEntries(Object.entries(d).map(([k,v]) => [k, typeof v === "number" ? (v > 100 ? Math.round(v * filterScale) : Number((v * (0.85 + 0.15 * filterScale)).toFixed(1))) : v])))} layout="vertical" margin={{ top: 0, right: 40, left: 10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e2e8f0" />
                   <XAxis type="number" domain={[0, 100]} hide />
                   <YAxis type="category" dataKey="channel" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} width={80} />
-                  <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px' }} />
-                  <Bar dataKey="volume" name="Volume" radius={[0, 4, 4, 0]} barSize={12} background={{ fill: '#f1f5f9', radius: [0,4,4,0] }}>
+                  <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} content={<CustomTooltip />} />
+                  <Bar dataKey="volume" name="Volume" radius={[0, 4, 4, 0] as any} barSize={12} background={{ fill: '#f1f5f9', radius: [0,4,4,0] as any }}>
                     <LabelList dataKey="volume" position="right" fill="#64748b" fontSize={10} formatter={(val: any) => `${val}%`} />
                     {channelData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={index === 0 ? colors.danger : colors.primary} />
@@ -248,12 +330,12 @@ export default function DashboardVolume() {
           <div className="flex-1 flex flex-col justify-center min-h-[220px]">
              <div className="h-[220px] w-full flex-1">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dayOfWeekData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+                <BarChart data={dayOfWeekData.map(d => Object.fromEntries(Object.entries(d).map(([k,v]) => [k, typeof v === "number" ? (v > 100 ? Math.round(v * filterScale) : Number((v * (0.85 + 0.15 * filterScale)).toFixed(1))) : v])))} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} dy={10} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10 }} tickFormatter={(val) => val > 1000 ? `${(val/1000).toFixed(0)}k` : val} />
-                  <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px' }} />
-                  <Bar dataKey="volume" name="Sessões" radius={[4, 4, 0, 0]} barSize={20}>
+                  <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} content={<CustomTooltip />} />
+                  <Bar dataKey="volume" name="Sessões" radius={[4, 4, 0, 0] as any} barSize={20}>
                     <LabelList dataKey="volume" position="top" fill="#64748b" fontSize={10} formatter={(val: any) => val > 1000 ? `${(val/1000).toFixed(1)}k` : val} />
                     {dayOfWeekData.map((entry, index) => (
                       <Cell 
@@ -282,7 +364,7 @@ export default function DashboardVolume() {
           <div className="flex-1 flex flex-col justify-center min-h-[220px]">
             <div className="h-[220px] w-full flex-1">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={hourlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <AreaChart data={hourlyData.map(d => Object.fromEntries(Object.entries(d).map(([k,v]) => [k, typeof v === "number" ? (v > 100 ? Math.round(v * filterScale) : Number((v * (0.85 + 0.15 * filterScale)).toFixed(1))) : v])))} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorVolume" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor={colors.warning} stopOpacity={0.3}/>

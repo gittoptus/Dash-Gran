@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
+import { useDashboard } from '@/contexts/DashboardContext';
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { ExpandableCard } from '@/components/ui/expandable-card';
 import { 
@@ -39,6 +41,22 @@ const demandData = [
   { demand: 'Reclamação', csat: 60 },
 ];
 
+const detractorReasons = [
+  { reason: 'Lentidão no atendimento', percentage: 35 },
+  { reason: 'Problema não resolvido', percentage: 28 },
+  { reason: 'Muitas transferências', percentage: 15 },
+  { reason: 'Falta de empatia', percentage: 12 },
+  { reason: 'Outros', percentage: 10 },
+];
+
+const promoterReasons = [
+  { reason: 'Rapidez no atendimento', percentage: 42 },
+  { reason: 'Problema resolvido', percentage: 35 },
+  { reason: 'Atendente cordial', percentage: 14 },
+  { reason: 'Clareza nas informações', percentage: 6 },
+  { reason: 'Outros', percentage: 3 },
+];
+
 const notesDistribution = [
   { note: 'Nota 1', percentage: 12, type: 'detrator' },
   { note: 'Nota 2', percentage: 8, type: 'detrator' },
@@ -58,16 +76,50 @@ const colors = {
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
+    let variationInfo = null;
+    const atualEntry = payload.find((p: any) => p.name?.toLowerCase() === 'atual' || p.dataKey === 'atual' || p.dataKey === 'Atual');
+    const anteriorEntry = payload.find((p: any) => p.name?.toLowerCase() === 'anterior' || p.dataKey === 'anterior' || p.dataKey === 'Anterior');
+
+    if (atualEntry && anteriorEntry && anteriorEntry.value > 0) {
+      const perc = ((atualEntry.value - anteriorEntry.value) / anteriorEntry.value) * 100;
+      const isPositive = perc > 0;
+      // Para FCR, CSAT, Bot, Retenção, uma variação positiva geralmente é boa, então verde. 
+      // Em casos como "Taxa de Transferência", positivo pode ser ruim, mas o padrão será mantido ou ajustaremos conforme a cor.
+      let variationColor = isPositive ? 'text-success' : 'text-danger';
+      // Inversão de cor para Transferência (mais = ruim)
+      if (typeof window !== 'undefined' && window.location.pathname.includes('transferencia')) {
+        variationColor = isPositive ? 'text-danger' : 'text-success';
+      }
+
+      variationInfo = (
+        <div className="mt-2 pt-2 border-t border-border flex items-center justify-between gap-4">
+          <span className="text-[11px] text-muted uppercase">Var. Período Ant.:</span>
+          <span className={`text-[12px] font-bold ${variationColor}`}>
+            {isPositive ? '+' : ''}{perc.toFixed(1)}%
+          </span>
+        </div>
+      );
+    }
+
     return (
-      <div className="bg-card border text-[13px] border-border p-3 rounded-lg shadow-lg">
-        <p className="font-semibold text-foreground mb-1">Dia {label}</p>
-        {payload.map((entry: any, index: number) => (
-          <div key={index} className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-            <span className="text-muted font-medium">{entry.name}:</span>
-            <span className="text-foreground font-bold">{entry.value}%</span>
-          </div>
-        ))}
+      <div className="bg-card border text-[13px] border-border p-3 rounded-lg shadow-lg min-w-[170px]">
+        <p className="font-semibold text-foreground mb-2">
+          {label && label.toString().length <= 2 && !isNaN(Number(label)) ? `Dia ${label}` : label}
+        </p>
+        <div className="flex flex-col gap-1.5">
+          {payload.map((entry: any, index: number) => (
+            <div key={index} className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color || '#2563eb' }} />
+                <span className="text-muted font-medium">{entry.name}:</span>
+              </div>
+              <span className="text-foreground font-bold">
+                {typeof entry.value === "number" && entry.value % 1 !== 0 ? entry.value.toFixed(1) : (typeof entry.value === "number" ? entry.value.toLocaleString("pt-BR") : entry.value)}%
+              </span>
+            </div>
+          ))}
+        </div>
+        {variationInfo}
       </div>
     );
   }
@@ -75,6 +127,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function DashboardCSAT() {
+  const { filterScale } = useDashboard();
   const [expanded, setExpanded] = useState<string | null>(null);
 
   return (
@@ -102,15 +155,15 @@ export default function DashboardCSAT() {
         </div>
       </div>
 
-      {/* Top Layer: Exec Card & Evolution */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      {/* Top Layer: Exec Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
         
         {/* Executive Card */}
-        <Card className="lg:col-span-1 border-border bg-card flex flex-col p-[20px]">
+        <Card className="border-border bg-card flex flex-col p-[20px]">
           <div className="text-[12px] font-semibold text-muted uppercase tracking-[0.05em] mb-4">
             Satisfação do Cliente
           </div>
-          <div className="text-[48px] font-bold text-foreground mb-1 leading-none tracking-tight">75,2%</div>
+          <div className="text-[48px] font-bold text-foreground mb-1 leading-none tracking-tight">{((75.2 * (0.85 + 0.15 * Math.max(0.5, filterScale))).toFixed(1)).replace('.', ',')}%</div>
           
           <div className="text-[14px] font-semibold flex items-center gap-1 mb-5 text-danger">
             ▼ -1,1 p.p vs anterior
@@ -119,7 +172,7 @@ export default function DashboardCSAT() {
           <div className="mt-auto pt-4 border-t border-border flex justify-between text-[13px]">
             <div>
               <div className="text-[11px] text-muted mb-2">Volume Base</div>
-              <div className="font-semibold text-foreground">1.453 resp.</div>
+              <div className="font-semibold text-foreground">{Math.round(1453 * filterScale).toLocaleString('pt-BR')} resp.</div>
             </div>
             <div className="text-right">
               <div className="text-[11px] text-muted mb-2">Status</div>
@@ -129,6 +182,10 @@ export default function DashboardCSAT() {
             </div>
           </div>
         </Card>
+      </div>
+
+      {/* Evolution Chart Layer */}
+      <div className="grid grid-cols-1 gap-6">
 
         {/* Evolution Chart */}
         <ExpandableCard
@@ -136,7 +193,7 @@ export default function DashboardCSAT() {
           title="Evolução de Satisfação vs Período Anterior"
           expanded={expanded}
           setExpanded={setExpanded}
-          className="lg:col-span-3 pb-2"
+          className="pb-2"
           extraHeader={
             <div className="flex gap-3">
                 <span className="text-[10px] opacity-60 text-foreground">● Atual</span>
@@ -146,7 +203,7 @@ export default function DashboardCSAT() {
         >
           <div className="h-[240px] w-full min-h-[240px] flex-1 border-b border-border pb-2">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={evolutionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <ComposedChart data={evolutionData.map(d => Object.fromEntries(Object.entries(d).map(([k,v]) => [k, typeof v === "number" ? (v > 100 ? Math.round(v * filterScale) : Number((v * (0.85 + 0.15 * filterScale)).toFixed(1))) : v])))} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis 
                     dataKey="day" 
@@ -194,7 +251,7 @@ export default function DashboardCSAT() {
       </div>
 
       {/* Diagnosis Layer */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* CSAT by Channel */}
         <ExpandableCard
@@ -207,12 +264,12 @@ export default function DashboardCSAT() {
           <div className="flex-1 flex flex-col justify-center min-h-[220px]">
             <div className="h-[220px] w-full flex-1">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={channelData} layout="vertical" margin={{ top: 0, right: 40, left: 10, bottom: 0 }}>
+                <BarChart data={channelData.map(d => Object.fromEntries(Object.entries(d).map(([k,v]) => [k, typeof v === "number" ? (v > 100 ? Math.round(v * filterScale) : Number((v * (0.85 + 0.15 * filterScale)).toFixed(1))) : v])))} layout="vertical" margin={{ top: 0, right: 40, left: 10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e2e8f0" />
                   <XAxis type="number" domain={[0, 100]} hide />
                   <YAxis type="category" dataKey="channel" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} width={80} />
-                  <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px' }} />
-                  <Bar dataKey="csat" radius={[0, 4, 4, 0]} barSize={12} background={{ fill: '#f1f5f9', radius: [0,4,4,0] }}>
+                  <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} content={<CustomTooltip />} />
+                  <Bar dataKey="csat" radius={[0, 4, 4, 0] as any} barSize={12} background={{ fill: '#f1f5f9', radius: [0,4,4,0] as any }}>
                     <LabelList dataKey="csat" position="right" fill="#64748b" fontSize={10} formatter={(val: any) => `${val}%`} />
                     {channelData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.csat < 75 ? colors.danger : colors.primary} />
@@ -245,12 +302,12 @@ export default function DashboardCSAT() {
           <div className="flex-1 flex flex-col justify-center min-h-[260px]">
             <div className="h-[260px] w-full flex-1">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={demandData} layout="vertical" margin={{ top: 0, right: 40, left: 30, bottom: 0 }}>
+                <BarChart data={demandData.map(d => Object.fromEntries(Object.entries(d).map(([k,v]) => [k, typeof v === "number" ? (v > 100 ? Math.round(v * filterScale) : Number((v * (0.85 + 0.15 * filterScale)).toFixed(1))) : v])))} layout="vertical" margin={{ top: 0, right: 40, left: 30, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e2e8f0" />
                   <XAxis type="number" domain={[0, 100]} hide />
                   <YAxis type="category" dataKey="demand" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} width={110} />
-                  <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px' }} />
-                  <Bar dataKey="csat" radius={[0, 4, 4, 0]} barSize={12} background={{ fill: '#f1f5f9', radius: [0,4,4,0] }}>
+                  <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} content={<CustomTooltip />} />
+                  <Bar dataKey="csat" radius={[0, 4, 4, 0] as any} barSize={12} background={{ fill: '#f1f5f9', radius: [0,4,4,0] as any }}>
                     <LabelList dataKey="csat" position="right" fill="#64748b" fontSize={10} formatter={(val: any) => `${val}%`} />
                     {demandData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.csat < 70 ? colors.warning : colors.primary} />
@@ -273,12 +330,12 @@ export default function DashboardCSAT() {
           <div className="flex-1 flex flex-col justify-center min-h-[220px]">
              <div className="h-[220px] w-full flex-1">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={notesDistribution} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+                <BarChart data={notesDistribution.map(d => Object.fromEntries(Object.entries(d).map(([k,v]) => [k, typeof v === "number" ? (v > 100 ? Math.round(v * filterScale) : Number((v * (0.85 + 0.15 * filterScale)).toFixed(1))) : v])))} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="note" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} dy={10} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10 }} tickFormatter={(val) => `${val}%`} />
-                  <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px' }} />
-                  <Bar dataKey="percentage" radius={[4, 4, 0, 0]} barSize={24}>
+                  <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} content={<CustomTooltip />} />
+                  <Bar dataKey="percentage" radius={[4, 4, 0, 0] as any} barSize={24}>
                     <LabelList dataKey="percentage" position="top" fill="#64748b" fontSize={10} formatter={(val: any) => `${val}%`} />
                     {notesDistribution.map((entry, index) => (
                       <Cell 
@@ -303,6 +360,56 @@ export default function DashboardCSAT() {
                      <div className="text-[11px] text-muted mb-1">Promotores (4-5)</div>
                     <div className="text-[14px] font-bold text-success">65%</div>
                 </div>
+            </div>
+          </div>
+        </ExpandableCard>
+
+        {/* Detractor Reasons */}
+        <ExpandableCard
+          id="csat-detractors"
+          title="Principais Motivos Detratores"
+          expanded={expanded}
+          setExpanded={setExpanded}
+          contentClassName="justify-center"
+        >
+          <div className="flex-1 flex flex-col justify-center min-h-[260px]">
+            <div className="h-[260px] w-full flex-1">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={detractorReasons} layout="vertical" margin={{ top: 0, right: 40, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e2e8f0" />
+                  <XAxis type="number" domain={[0, 'dataMax']} hide />
+                  <YAxis type="category" dataKey="reason" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} width={120} />
+                  <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} content={<CustomTooltip />} />
+                  <Bar dataKey="percentage" radius={[0, 4, 4, 0] as any} barSize={12} fill={colors.danger} background={{ fill: '#f1f5f9', radius: [0,4,4,0] as any }}>
+                    <LabelList dataKey="percentage" position="right" fill="#64748b" fontSize={10} formatter={(val: any) => `${val}%`} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </ExpandableCard>
+
+        {/* Promoter Reasons */}
+        <ExpandableCard
+          id="csat-promoters"
+          title="Principais Motivos Promotores"
+          expanded={expanded}
+          setExpanded={setExpanded}
+          contentClassName="justify-center"
+        >
+          <div className="flex-1 flex flex-col justify-center min-h-[260px]">
+            <div className="h-[260px] w-full flex-1">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={promoterReasons} layout="vertical" margin={{ top: 0, right: 40, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e2e8f0" />
+                  <XAxis type="number" domain={[0, 'dataMax']} hide />
+                  <YAxis type="category" dataKey="reason" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} width={120} />
+                  <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} content={<CustomTooltip />} />
+                  <Bar dataKey="percentage" radius={[0, 4, 4, 0] as any} barSize={12} fill={colors.success} background={{ fill: '#f1f5f9', radius: [0,4,4,0] as any }}>
+                    <LabelList dataKey="percentage" position="right" fill="#64748b" fontSize={10} formatter={(val: any) => `${val}%`} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </ExpandableCard>
