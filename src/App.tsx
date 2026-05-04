@@ -11,10 +11,11 @@ import DashboardTransfer from './components/DashboardTransfer';
 import DashboardRetention from './components/DashboardRetention';
 import DashboardVolume from './components/DashboardVolume';
 import DashboardCustom from './components/DashboardCustom';
+import DashboardJourney from './components/DashboardJourney';
 import DateRangePicker, { DateRange } from './components/DateRangePicker';
 import BusinessMetricsFilter from './components/BusinessMetricsFilter';
 import { DashboardProvider } from './contexts/DashboardContext';
-import { Bot, ArrowRightLeft, TrendingUp, HeartHandshake, UserCheck, Hash, LayoutDashboard, Database } from 'lucide-react';
+import { Bot, ArrowRightLeft, TrendingUp, HeartHandshake, UserCheck, Hash, LayoutDashboard, Route } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function App() {
@@ -34,12 +35,14 @@ export default function App() {
       case 'transferencias': return 'Transbordo Estratégico';
       case 'retencao': return 'Engajamento e Retenção';
       case 'custom': return 'Dashboards Personalizados';
+      case 'journey': return 'Mapa do atendimento';
       default: return 'Painel Analítico';
     }
   };
 
   const tabs = [
     { id: 'volume', label: 'Volume', icon: Hash },
+    { id: 'journey', label: 'Mapa do atendimento', icon: Route },
     { id: 'fcr', label: 'Resolução (FCR)', icon: TrendingUp },
     { id: 'csat', label: 'Satisfação (CSAT)', icon: HeartHandshake },
     { id: 'bot', label: 'Encerramento Bot', icon: Bot },
@@ -57,14 +60,6 @@ export default function App() {
           <header className="flex-none pt-4 border-b border-border flex flex-col gap-4 bg-card/60 backdrop-blur-md z-20 sticky top-0 shadow-sm relative">
             <div className="px-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-6 h-6 bg-primary rounded-[4px] flex items-center justify-center shrink-0">
-                    <Database className="w-3.5 h-3.5 text-primary-foreground" />
-                  </div>
-                  <span className="font-semibold tracking-tight text-foreground text-[14px]">
-                    Toptus
-                  </span>
-                </div>
                 <div className="text-[11px] text-[#64748b] mb-1 uppercase tracking-[0.05em] font-semibold">
                   Visão Operacional / <span className="text-primary">{activePath}</span>
                 </div>
@@ -78,16 +73,16 @@ export default function App() {
             </div>
 
             {/* Horizontal Tabs */}
-            <div className="px-8 mt-2 flex flex-wrap gap-1">
+            <div className="px-8 pb-4 flex flex-wrap gap-2">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActivePath(tab.id)}
                   className={cn(
-                    "flex items-center gap-2 px-4 py-2 border-b-2 text-[14px] font-medium transition-colors hover:bg-muted/50",
+                    "flex items-center gap-2 px-4 py-2 rounded-full text-[14px] font-medium transition-all",
                     activePath === tab.id
-                      ? "border-primary text-primary"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-white text-black border border-border hover:bg-primary hover:text-primary-foreground"
                   )}
                 >
                   <tab.icon className="w-4 h-4" />
@@ -107,6 +102,7 @@ export default function App() {
               {activePath === 'transferencias' && <DashboardTransfer />}
               {activePath === 'retencao' && <DashboardRetention />}
               {activePath === 'custom' && <DashboardCustom />}
+              {activePath === 'journey' && <DashboardJourney />}
             </div>
           </div>
         </main>
